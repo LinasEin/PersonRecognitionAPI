@@ -38,22 +38,21 @@ namespace RecognitionAPI.Controllers
                     var postedFile = httpRequest.Files[file];
                     if (postedFile != null && postedFile.ContentLength > 0)
                     {
-                        PersonRecognition.Instance.FindFacesInPhoto(postedFile);               
-                    }
-                    var image = PersonRecognitionModel.Instance.GetPicture();
-                    if (image == null)
-                    {
-                        return Request.CreateResponse(HttpStatusCode.NotFound);
-                    }
+                        var image = PersonRecognition.Instance.FindFacesInPhoto(postedFile);
+                        if (image == null)
+                        {
+                            return Request.CreateResponse(HttpStatusCode.NotFound);
+                        }
 
-                    using (MemoryStream convertionStream = new MemoryStream())
-                    {
-                        image.Save(convertionStream, ImageFormat.Bmp);
-                        MemoryStream stream = new MemoryStream(convertionStream.ToArray());
-                        response.Content = new StreamContent(stream);
-                        response.Content.Headers.ContentType = new MediaTypeHeaderValue("image/bmp");
+                        using (MemoryStream convertionStream = new MemoryStream())
+                        {
+                            image.Save(convertionStream, ImageFormat.Bmp);
+                            MemoryStream stream = new MemoryStream(convertionStream.ToArray());
+                            response.Content = new StreamContent(stream);
+                            response.Content.Headers.ContentType = new MediaTypeHeaderValue("image/bmp");
+                        }
+                        return response;
                     }
-                    return response;
                 }
                 var res = string.Format("Please Upload an image.");
                 dict.Add("error", res);

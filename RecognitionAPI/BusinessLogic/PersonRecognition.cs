@@ -63,7 +63,7 @@ namespace WhosThat.BusinessLogic
             return true;
         }
 
-        private void DetectPerson(Image<Gray, Byte> gray, Image<Bgr, Byte> CurrentFrame)
+        private Bitmap DetectPerson(Image<Gray, Byte> gray, Image<Bgr, Byte> CurrentFrame)
         {           
             var facesDetected = gray.DetectHaarCascade(
               haarObj: FaceHaarCascade,
@@ -130,10 +130,10 @@ namespace WhosThat.BusinessLogic
                     CurrentFrame.Draw(face.rect, new Bgr(Color.Red), frameThickness);
                 }
             }
-             Model.AddPicture(CurrentFrame.ToBitmap());
+             return CurrentFrame.ToBitmap();
         }  
 
-        public void FindFacesInPhoto(HttpPostedFile request)
+        public Bitmap FindFacesInPhoto(HttpPostedFile request)
         {
             var stream = request.InputStream;
             var image = Bitmap.FromStream(stream);
@@ -150,7 +150,7 @@ namespace WhosThat.BusinessLogic
             var rgbImage = new Image<Bgr, byte>(new Bitmap(image, scaledSize));
             var grayPhoto = rgbImage.Convert<Gray, byte>();
 
-            DetectPerson(grayPhoto, rgbImage);
+            return DetectPerson(grayPhoto, rgbImage);
         }
         
     }
