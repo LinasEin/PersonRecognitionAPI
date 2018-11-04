@@ -15,7 +15,6 @@ namespace WhosThat.BusinessLogic
     public sealed class PersonRecognition
     {
         private HaarCascade FaceHaarCascade;
-        private MCvFont Font;
         private Image<Gray, byte> Result;
         private ItemCatalog<FaceModel> Faces = new ItemCatalog<FaceModel>();
         private IPersonRecognitionModel Model;
@@ -28,27 +27,21 @@ namespace WhosThat.BusinessLogic
         private PersonRecognition()
         {
             Model = PersonRecognitionModel.Instance;
-            //LoadTrainedFaces(new ReaderFromFile());
+            LoadTrainedFaces(new ReaderFromFile());
             FaceHaarCascade = new HaarCascade(HttpContext.Current.Server.MapPath("~/bin/")+WebConfigurationManager.AppSettings["haarcascade"]);
-            Font = new MCvFont(
-                FONT.CV_FONT_HERSHEY_DUPLEX,
-                double.Parse(WebConfigurationManager.AppSettings["fontHorScale"]),
-                double.Parse(WebConfigurationManager.AppSettings["fontVerScale"]));
         }
 
         public bool LoadTrainedFaces(IReader Reader)
         {
             string[] fileLabels = Reader.Read();
-
             if (fileLabels.Length == 0)
                 return false;
-            //System.Diagnostics.Debug.WriteLine(fileLabels[0]);
             fileLabels.ToList()
                 .ConvertAll<string>(label => label.Split('\\').Last())
                 .ForEach(
             fullFileName =>
             {
-                var pathToFile = $"{HttpContext.Current.Server.MapPath("~/Images/")}{fullFileName}";
+                var pathToFile = $"{HttpContext.Current.Server.MapPath($"~{WebConfigurationManager.AppSettings["faceLocPath"]}")}{fullFileName}";
 
                 var fileName = System.Text.RegularExpressions.Regex.Replace(fullFileName, @"_[^_]+\.bmp", "");
                 var label = fileName.Replace('_', ' ');
@@ -63,7 +56,7 @@ namespace WhosThat.BusinessLogic
             return true;
         }
 
-        private Bitmap DetectPerson(Image<Gray, Byte> gray, Image<Bgr, Byte> CurrentFrame)
+        private string DetectPerson(Image<Gray, Byte> gray, Image<Bgr, Byte> CurrentFrame)
         {           
             var facesDetected = gray.DetectHaarCascade(
               haarObj: FaceHaarCascade,
@@ -85,9 +78,6 @@ namespace WhosThat.BusinessLogic
                             int.Parse(WebConfigurationManager.AppSettings["reswidth"]),
                             INTER.CV_INTER_CUBIC);
 
-                
-                CurrentFrame.Draw(face.rect, new Bgr(Color.Gray), frameThickness);
-
                 if (Faces.Any())
                 {
                     var termCriteria = new MCvTermCriteria(
@@ -103,37 +93,13 @@ namespace WhosThat.BusinessLogic
                        ref termCriteria);
 
                     string name = recognizer.Recognize(Result);
-
-                   if (name != String.Empty)
-                    {
-                      /*if (Model.CheckIfRecognized(name))
-                        {
-                            Model.AddLabel(name);
-                        }*/
-                        CurrentFrame.Draw(face.rect, new Bgr(Color.Green), frameThickness);
-                    }
-                    else
-                    {
-                        CurrentFrame.Draw(face.rect, new Bgr(Color.Red), frameThickness);
-                        name = WebConfigurationManager.AppSettings["defaultLabel"];
-                    }
-
-                    //Draw the label for each recognized face
-                    
-                    var textSize = Font.GetTextSize(name, 0);
-                    var x = face.rect.Left + (face.rect.Width - textSize.Width) / 2;
-                    var y = face.rect.Bottom + textSize.Height;
-                    CurrentFrame.Draw(name, ref Font, new Point(x, y + 5), new Bgr(Color.White));
-                }
-                else
-                {
-                    CurrentFrame.Draw(face.rect, new Bgr(Color.Red), frameThickness);
+                    return name;
                 }
             }
-             return CurrentFrame.ToBitmap();
+            return string.Empty;
         }  
 
-        public Bitmap FindFacesInPhoto(HttpPostedFile request)
+        public string FindFacesInPhoto(HttpPostedFile request)
         {
             var stream = request.InputStream;
             var image = Bitmap.FromStream(stream);

@@ -1,13 +1,10 @@
-﻿using System.Collections.Generic;
-using System.Drawing.Imaging;
-using System.IO;
+﻿using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Web;
 using System.Web.Http;
 using WhosThat.BusinessLogic;
-using WhosThat.Model;
 
 namespace RecognitionAPI.Controllers
 {
@@ -18,78 +15,41 @@ namespace RecognitionAPI.Controllers
     public class PersonRecController : ApiController
     {
         /// <summary>
-        /// Posts frame to memory and starts recognition process. 
+        /// Posts frame and starts recognition process. 
         /// </summary>
-        /// <returns>HttpResponseMessage - Status code</returns>
-        [Route("Post")]
-        [AllowAnonymous]
+        /// <returns>HttpResponseMessage - Status code or text/plain content</returns>
+        [Route("post")]
         public HttpResponseMessage PostImage()
         {
-            Dictionary<string, object> dict = new Dictionary<string, object>();
             try
             {
                 var httpRequest = HttpContext.Current.Request;
                 foreach (string file in httpRequest.Files)
                 {
-
-                    //TODO: not sure about this
                     HttpResponseMessage response = Request.CreateResponse(HttpStatusCode.Created);
 
                     var postedFile = httpRequest.Files[file];
                     if (postedFile != null && postedFile.ContentLength > 0)
                     {
-                        var image = PersonRecognition.Instance.FindFacesInPhoto(postedFile);
-                        if (image == null)
+                        var result = PersonRecognition.Instance.FindFacesInPhoto(postedFile);
+                        if (result == null)
                         {
                             return Request.CreateResponse(HttpStatusCode.NotFound);
                         }
-
-                        using (MemoryStream convertionStream = new MemoryStream())
-                        {
-                            image.Save(convertionStream, ImageFormat.Bmp);
-                            MemoryStream stream = new MemoryStream(convertionStream.ToArray());
-                            response.Content = new StreamContent(stream);
-                            response.Content.Headers.ContentType = new MediaTypeHeaderValue("image/bmp");
-                        }
+                        byte[] bytes = System.Text.Encoding.ASCII.GetBytes(result);
+                        MemoryStream stream = new MemoryStream(bytes);
+                        response.Content = new StreamContent(stream);
+                        response.Content.Headers.ContentType = new MediaTypeHeaderValue("text/plain");
                         return response;
                     }
                 }
-                var res = string.Format("Please Upload an image.");
-                dict.Add("error", res);
-                return Request.CreateResponse(HttpStatusCode.NotFound, dict);
+                return Request.CreateResponse(HttpStatusCode.NotFound);
             }
             catch (HttpException)
             {
-                var errMessage = string.Format("Request failed.");
-                dict.Add("error", errMessage);
-                return Request.CreateResponse(HttpStatusCode.NotFound, dict);
-            }
-        }
-    
-        /*/// <summary>
-        /// Gets processed image.
-        /// </summary>
-        /// <returns>HttpResponseMessage - Content</returns>
-        [Route("Get")]
-        [HttpGet]
-        public HttpResponseMessage GetImage()
-        {
-            var image = PersonRecognitionModel.Instance.GetPicture();
-            if (image == null)
-            {
                 return Request.CreateResponse(HttpStatusCode.NotFound);
             }
-
-            using (MemoryStream convertionStream = new MemoryStream())
-            {
-                image.Save(convertionStream, ImageFormat.Bmp);
-                MemoryStream stream = new MemoryStream(convertionStream.ToArray());
-                HttpResponseMessage response = new HttpResponseMessage();
-                response.Content = new StreamContent(stream);
-                response.Content.Headers.ContentType = new MediaTypeHeaderValue("image/bmp");
-                return response;
-            }
         }
-        */
+
     }
 }
